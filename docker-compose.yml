@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  db:
+    image: "postgres:14.5"
+    container_name: kc_db
+    environment:
+      POSTGRES_PASSWORD: ${ENV_DB_PASSWORD}
+      POSTGRES_DB: ${ENV_DB_NAME}
+      POSTGRES_USER: ${ENV_DB_USER}
+    command: -c listen_addresses='*'
+    restart: unless-stopped
+    volumes:
+      - my-datavolume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=${ENV_DB_PASSWORD} pg_isready -h db -U ${ENV_DB_USER} -d ${ENV_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  keycloak:
+    container_name: kc_app
+    image: mykeycloak
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        db_vendor: postgres
+        db_url: jdbc:postgresql://db:5432/${ENV_DB_NAME}
+        db_user: ${ENV_DB_USER}
+        db_pass: ${ENV_DB_PASSWORD}
+        hostname: ${ENV_KC_HOSTNAME}
+    env_file:
+      - .keycloak.env
+    healthcheck:
+      test: [ "CMD-SHELL", "java /opt/keycloak/ConnectionTest.java https://kc_app:9000/health/ready | grep -q '\"status\": \"UP\"'" ]
+      interval: 60s
+      timeout: 10s
+      retries: 15
+    volumes:
+      - ${ENV_KC_CERTFILE}:/etc/x509/https/tls.crt
+      - ${ENV_KC_KEYFILE}:/etc/x509/https/tls.key
+    command: start --optimized
+    ports:
+      - 8443:8443
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  my-datavolume:

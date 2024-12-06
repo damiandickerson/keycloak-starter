@@ -1,0 +1,8 @@
+{
+  "host": "keycloak.test.com:8443",
+  "realm": "test",
+  "username": "test",
+  "password": "abc123",
+  "clientid": "test",
+  "client_secret": "e9vRnzfjBSgFLZEwWS48PADYxw4VzXl4"
+}
